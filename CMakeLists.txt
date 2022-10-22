@@ -88,13 +88,7 @@ target_include_directories(${PROJECT_NAME}
 	PRIVATE ${CRYPTO_INCLUDE_DIRS}
 	PRIVATE ${CLIENT_INCLUDE_DIRS})
 
-target_compile_options(${PROJECT_NAME} 
-	PRIVATE "${SDK_COMPILER_FLAGS}" -DALIBABACLOUD_SHARED -DALIBABACLOUD_OSS_LIBRARY)
-
-if(NOT CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
-target_compile_options(${PROJECT_NAME} 
-	PRIVATE "-fvisibility=hidden")
-endif()
+target_compile_options(${PROJECT_NAME} PRIVATE "/MP")
 
 target_link_libraries(${PROJECT_NAME} OpenSSL::SSL OpenSSL::Crypto)
 target_link_libraries(${PROJECT_NAME} CURL::libcurl)
