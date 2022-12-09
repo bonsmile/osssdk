@@ -89,7 +89,7 @@ target_include_directories(${PROJECT_NAME}
 	PRIVATE ${CLIENT_INCLUDE_DIRS})
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE -DALIBABACLOUD_SHARED -DALIBABACLOUD_OSS_LIBRARY)
-target_compile_options(${PROJECT_NAME} PRIVATE "/MP")
+target_compile_options(${PROJECT_NAME} PRIVATE "/MP" "/D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS" "/W2")
 
 target_link_libraries(${PROJECT_NAME} OpenSSL::SSL OpenSSL::Crypto)
 target_link_libraries(${PROJECT_NAME} CURL::libcurl)
