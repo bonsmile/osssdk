@@ -18,6 +18,7 @@ cmake_minimum_required(VERSION 3.25.0)
 
 project(osssdk CXX)
 
+find_package(OpenSSL REQUIRED)
 find_package(CURL REQUIRED)
 
 configure_file(src/Config.h.in ${CMAKE_CURRENT_SOURCE_DIR}/include/alibabacloud/oss/Config.h @ONLY)
@@ -138,7 +139,8 @@ endif()
 add_library(${PROJECT_NAME}${STATIC_LIB_SUFFIX} STATIC
     ${sdk_header}
     ${sdk_src})
-    
+
+target_link_libraries(${PROJECT_NAME} OpenSSL::SSL OpenSSL::Crypto)
 target_link_libraries(${PROJECT_NAME}${STATIC_LIB_SUFFIX} CURL::libcurl)
 
 set_target_properties(${PROJECT_NAME}${STATIC_LIB_SUFFIX}
