@@ -66,17 +66,19 @@ namespace OSS
     bool IsIp(const std::string &host);
     bool IsValidBucketName(const std::string &bucketName);
     bool IsValidObjectKey(const std::string &key);
+    bool IsValidObjectKey(const std::string& key, bool strict);
     bool IsValidLoggingPrefix(const std::string &prefix);
     bool IsValidChannelName(const std::string &channelName);
     bool IsValidPlayListName(const std::string &playListName);
     bool IsValidTagKey(const std::string &key);
     bool IsValidTagValue(const std::string &value);
+    bool IsValidEndpoint(const std::string &value);
 
     const std::string &LookupMimeType(const std::string& name);
-    std::string CombineHostString(const std::string &endpoint, const std::string &bucket, bool isCname);
-    std::string CombinePathString(const std::string &endpoint, const std::string &bucket, const std::string &key);
+    std::string CombineHostString(const std::string &endpoint, const std::string &bucket, bool isCname, bool isPathStyle);
+    std::string CombinePathString(const std::string &endpoint, const std::string &bucket, const std::string &key, bool isPathStyle);
     std::string CombineQueryString(const ParameterCollection &parameters);
-    std::string CombineRTMPString(const std::string &endpoint, const std::string &bucket, bool isCname);
+    std::string CombineRTMPString(const std::string &endpoint, const std::string &bucket, bool isCname, bool isPathStyle);
 
 
     std::streampos GetIOStreamLength(std::iostream &stream);
@@ -124,8 +126,9 @@ namespace OSS
     const char * ToTierTypeName(TierType status);
     TierType ToTierType(const char *name);
 
+#if !defined(OSS_DISABLE_RESUAMABLE) || !defined(OSS_DISABLE_ENCRYPTION)
     std::map<std::string, std::string> JsonStringToMap(const std::string& jsonStr);
     std::string MapToJsonString(const std::map<std::string, std::string>& map);
-
+#endif
 }
 }

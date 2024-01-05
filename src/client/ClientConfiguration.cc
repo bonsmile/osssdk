@@ -81,6 +81,7 @@ bool DefaultRetryStrategy::shouldRetry(const Error & error, long attemptedRetrie
         case (ERROR_CURL_BASE + 52): //CURLE_GOT_NOTHING
         case (ERROR_CURL_BASE + 55): //CURLE_SEND_ERROR
         case (ERROR_CURL_BASE + 56): //CURLE_RECV_ERROR
+        case (ERROR_CURL_BASE + 65): //CURLE_SEND_FAIL_REWIND
             return true;
         default:
             break;
@@ -107,14 +108,16 @@ ClientConfiguration::ClientConfiguration() :
     retryStrategy(std::make_shared<DefaultRetryStrategy>()),
     proxyScheme(Http::Scheme::HTTP),
     proxyPort(0),
-    verifySSL(false),
+    verifySSL(true),
     isCname(false),
     enableCrc64(true),
     enableDateSkewAdjustment(true),
     sendRateLimiter(nullptr),
     recvRateLimiter(nullptr),
     executor(nullptr),
-    httpClient(nullptr)
+    httpClient(nullptr),
+    isPathStyle(false),
+    isVerifyObjectStrict(true)
 {
 
 }

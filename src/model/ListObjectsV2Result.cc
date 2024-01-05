@@ -15,53 +15,50 @@
  */
 
 
-#include <alibabacloud/oss/model/ListObjectVersionsResult.h>
+#include <alibabacloud/oss/model/ListObjectsV2Result.h>
 #include <tinyxml2/tinyxml2.h>
 #include <alibabacloud/oss/model/Owner.h>
 #include "../utils/Utils.h"
 using namespace AlibabaCloud::OSS;
 using namespace tinyxml2;
 
-
-ListObjectVersionsResult::ListObjectVersionsResult() :
+ListObjectsV2Result::ListObjectsV2Result() :
     OssResult(),
     name_(),
     prefix_(),
-    keyMarker_(),
-    nextKeyMarker_(),
-    versionIdMarker_(),
-    nextVersionIdMarker_(),
+    startAfter_(),
+    continuationToken_(),
+    nextContinuationToken_(),
     delimiter_(),
-    encodingType_(),
-    isTruncated_(false),
     maxKeys_(),
+    keyCount_(),
+    isTruncated_(false),
     commonPrefixes_(),
-    objectVersionSummarys_(),
-    deleteMarkerSummarys_()
+    objectSummarys_()
 {
 }
 
-ListObjectVersionsResult::ListObjectVersionsResult(const std::string& result):
-    ListObjectVersionsResult()
+ListObjectsV2Result::ListObjectsV2Result(const std::string& result):
+    ListObjectsV2Result()
 {
     *this = result;
 }
 
-ListObjectVersionsResult::ListObjectVersionsResult(const std::shared_ptr<std::iostream>& result):
-    ListObjectVersionsResult()
+ListObjectsV2Result::ListObjectsV2Result(const std::shared_ptr<std::iostream>& result):
+    ListObjectsV2Result()
 {
     std::istreambuf_iterator<char> isb(*result.get()), end;
     std::string str(isb, end);
     *this = str;
 }
 
-ListObjectVersionsResult& ListObjectVersionsResult::operator =(const std::string& result)
+ListObjectsV2Result& ListObjectsV2Result::operator =(const std::string& result)
 {
     XMLDocument doc;
     XMLError xml_err;
     if ((xml_err = doc.Parse(result.c_str(), result.size())) == XML_SUCCESS) {
         XMLElement* root =doc.RootElement();
-        if (root && !std::strncmp("ListVersionsResult", root->Name(), 18)) {
+        if (root && !std::strncmp("ListBucketResult", root->Name(), 16)) {
             XMLElement *node;
             node = root->FirstChildElement("Name");
             if (node && node->GetText()) name_ = node->GetText();
@@ -69,23 +66,23 @@ ListObjectVersionsResult& ListObjectVersionsResult::operator =(const std::string
             node = root->FirstChildElement("Prefix");
             if (node && node->GetText()) prefix_ = node->GetText();
 
-            node = root->FirstChildElement("KeyMarker");
-            if (node && node->GetText()) keyMarker_ = node->GetText();
+            node = root->FirstChildElement("StartAfter");
+            if (node && node->GetText()) startAfter_ = node->GetText();
 
-            node = root->FirstChildElement("NextKeyMarker");
-            if (node && node->GetText()) nextKeyMarker_ = node->GetText();
+            node = root->FirstChildElement("ContinuationToken");
+            if (node && node->GetText()) continuationToken_ = node->GetText();
 
-            node = root->FirstChildElement("VersionIdMarker");
-            if (node && node->GetText()) versionIdMarker_ = node->GetText();
-
-            node = root->FirstChildElement("NextVersionIdMarker");
-            if (node && node->GetText()) nextVersionIdMarker_ = node->GetText();
+            node = root->FirstChildElement("NextContinuationToken");
+            if (node && node->GetText()) nextContinuationToken_ = node->GetText();
 
             node = root->FirstChildElement("Delimiter");
             if (node && node->GetText()) delimiter_ = node->GetText();
 
             node = root->FirstChildElement("MaxKeys");
             if (node && node->GetText()) maxKeys_ = atoi(node->GetText());
+
+            node = root->FirstChildElement("KeyCount");
+            if (node && node->GetText()) keyCount_ = atoi(node->GetText());
 
             node = root->FirstChildElement("IsTruncated");
             if (node && node->GetText()) isTruncated_ = !std::strncmp("true", node->GetText(), 4);
@@ -104,18 +101,12 @@ ListObjectVersionsResult& ListObjectVersionsResult::operator =(const std::string
                     (useUrlDecode ? UrlDecode(prefix_node->GetText()) : prefix_node->GetText()));
             }
 
-            //Version
-            XMLElement *contents_node = root->FirstChildElement("Version");
-            for (; contents_node; contents_node = contents_node->NextSiblingElement("Version")) {
-                ObjectVersionSummary content;
+            //Contents
+            XMLElement *contents_node = root->FirstChildElement("Contents");
+            for (; contents_node; contents_node = contents_node->NextSiblingElement("Contents")) {
+                ObjectSummary content;
                 node = contents_node->FirstChildElement("Key");
                 if (node && node->GetText()) content.key_ = useUrlDecode ? UrlDecode(node->GetText()) : node->GetText();
-
-                node = contents_node->FirstChildElement("VersionId");
-                if (node && node->GetText()) content.versionid_ = node->GetText();
-
-                node = contents_node->FirstChildElement("IsLatest");
-                if (node && node->GetText()) content.isLatest_ = !std::strncmp("true", node->GetText(), 4);
 
                 node = contents_node->FirstChildElement("LastModified");
                 if (node && node->GetText()) content.lastModified_ = node->GetText();
@@ -142,48 +133,19 @@ ListObjectVersionsResult& ListObjectVersionsResult::operator =(const std::string
                     sub_node = node->FirstChildElement("DisplayName");
                     if (sub_node && sub_node->GetText()) owner_DisplayName = sub_node->GetText();
                 }
-
                 content.owner_ = Owner(owner_ID, owner_DisplayName);
-                objectVersionSummarys_.push_back(content);
-            }
 
-            //DeleteMarker
-            contents_node = root->FirstChildElement("DeleteMarker");
-            for (; contents_node; contents_node = contents_node->NextSiblingElement("DeleteMarker")) {
-                DeleteMarkerSummary content;
-                node = contents_node->FirstChildElement("Key");
-                if (node && node->GetText()) content.key_ = useUrlDecode ? UrlDecode(node->GetText()) : node->GetText();
+                node = contents_node->FirstChildElement("RestoreInfo");
+                if (node && node->GetText()) content.restoreInfo_ = node->GetText();
 
-                node = contents_node->FirstChildElement("VersionId");
-                if (node && node->GetText()) content.versionid_ = node->GetText();
-
-                node = contents_node->FirstChildElement("IsLatest");
-                if (node && node->GetText()) content.isLatest_ = !std::strncmp("true", node->GetText(), 4);
-
-                node = contents_node->FirstChildElement("LastModified");
-                if (node && node->GetText()) content.lastModified_ = node->GetText();
-
-                node = contents_node->FirstChildElement("Owner");
-                std::string owner_ID, owner_DisplayName;
-                if (node) {
-                    XMLElement *sub_node;
-                    sub_node = node->FirstChildElement("ID");
-                    if (sub_node && sub_node->GetText()) owner_ID = sub_node->GetText();
-
-                    sub_node = node->FirstChildElement("DisplayName");
-                    if (sub_node && sub_node->GetText()) owner_DisplayName = sub_node->GetText();
-                }
-
-                content.owner_ = Owner(owner_ID, owner_DisplayName);
-                deleteMarkerSummarys_.push_back(content);
+                objectSummarys_.push_back(content);
             }
 
             //EncodingType
             if (useUrlDecode) {
-                delimiter_     = UrlDecode(delimiter_);
-                keyMarker_     = UrlDecode(keyMarker_);
-                nextKeyMarker_ = UrlDecode(nextKeyMarker_);
-                prefix_        = UrlDecode(prefix_);
+                delimiter_  = UrlDecode(delimiter_);
+                startAfter_ = UrlDecode(startAfter_);
+                prefix_     = UrlDecode(prefix_);
             }
         }
 

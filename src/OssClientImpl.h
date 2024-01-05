@@ -42,6 +42,7 @@ namespace OSS
         virtual ~OssClientImpl();
         int asyncExecute(Runnable * r) const;
 
+#if !defined(OSS_DISABLE_BUCKET)
         ListBucketsOutcome ListBuckets(const ListBucketsRequest &request) const;
         CreateBucketOutcome CreateBucket(const CreateBucketRequest &request) const;
         VoidOutcome SetBucketAcl(const SetBucketAclRequest& request) const;
@@ -70,8 +71,6 @@ namespace OSS
         VoidOutcome DeleteBucketQosInfo(const DeleteBucketQosInfoRequest& request) const;
         VoidOutcome DeleteBucketInventoryConfiguration(const DeleteBucketInventoryConfigurationRequest& request) const;
 
-        ListObjectOutcome ListObjects(const ListObjectsRequest &request) const;
-        ListObjectVersionsOutcome ListObjectVersions(const ListObjectVersionsRequest &request) const;
         ListBucketInventoryConfigurationsOutcome ListBucketInventoryConfigurations(const ListBucketInventoryConfigurationsRequest& request) const;
 
         GetBucketAclOutcome GetBucketAcl(const GetBucketAclRequest &request) const;
@@ -92,8 +91,18 @@ namespace OSS
         GetUserQosInfoOutcome GetUserQosInfo(const GetUserQosInfoRequest& request) const;
         GetBucketVersioningOutcome GetBucketVersioning(const GetBucketVersioningRequest& request) const;
         GetBucketInventoryConfigurationOutcome GetBucketInventoryConfiguration(const GetBucketInventoryConfigurationRequest& request) const;
+        InitiateBucketWormOutcome InitiateBucketWorm(const InitiateBucketWormRequest& request) const;
+        VoidOutcome AbortBucketWorm(const AbortBucketWormRequest& request) const;
+        VoidOutcome CompleteBucketWorm(const CompleteBucketWormRequest& request) const;
+        VoidOutcome ExtendBucketWormWorm(const ExtendBucketWormRequest& request) const;
+        GetBucketWormOutcome GetBucketWorm(const GetBucketWormRequest& request) const;
+#endif
 
         /*Object*/
+        ListObjectOutcome ListObjects(const ListObjectsRequest &request) const;
+        ListObjectsV2Outcome ListObjectsV2(const ListObjectsV2Request &request) const;
+        ListObjectVersionsOutcome ListObjectVersions(const ListObjectVersionsRequest &request) const;
+
         GetObjectOutcome GetObject(const GetObjectRequest &request) const;
         PutObjectOutcome PutObject(const PutObjectRequest &request) const;
         DeleteObjectOutcome DeleteObject(const DeleteObjectRequest &request) const;
@@ -135,11 +144,14 @@ namespace OSS
 
         /*Generate Post Policy*/
 
+#if !defined(OSS_DISABLE_RESUAMABLE)
         /*Resumable Operation*/
         PutObjectOutcome ResumableUploadObject(const UploadObjectRequest& request) const;
         CopyObjectOutcome ResumableCopyObject(const MultiCopyObjectRequest& request) const;
         GetObjectOutcome ResumableDownloadObject(const DownloadObjectRequest& request) const;
+#endif
 
+#if !defined(OSS_DISABLE_LIVECHANNEL)
         /*Live Channel*/
         VoidOutcome PutLiveChannelStatus(const PutLiveChannelStatusRequest &request) const;
         PutLiveChannelOutcome PutLiveChannel(const PutLiveChannelRequest &request) const;
@@ -151,6 +163,7 @@ namespace OSS
         ListLiveChannelOutcome ListLiveChannel(const ListLiveChannelRequest &request) const;
         VoidOutcome DeleteLiveChannel(const DeleteLiveChannelRequest &request) const;
         StringOutcome GenerateRTMPSignedUrl(const GenerateRTMPSignedUrlRequest &request) const;
+#endif
 
         /*Requests control*/
         void DisableRequest();
@@ -176,6 +189,7 @@ namespace OSS
         std::shared_ptr<CredentialsProvider> credentialsProvider_;
         std::shared_ptr<Signer> signer_;
         std::shared_ptr<Executor> executor_;
+        bool isValidEndpoint_;
     };
 }
 }

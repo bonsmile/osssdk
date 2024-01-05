@@ -15,7 +15,6 @@
 */
 
 #include <alibabacloud/oss/OssClient.h>
-#include "auth/SimpleCredentialsProvider.h"
 #include "http/CurlHttpClient.h"
 #include "OssClientImpl.h"
 #include <fstream>
@@ -98,6 +97,8 @@ OssClient::~OssClient()
 {
 }
 
+#if !defined(OSS_DISABLE_BUCKET)
+
 ListBucketsOutcome OssClient::ListBuckets() const
 {
     return client_->ListBuckets(ListBucketsRequest());
@@ -126,40 +127,6 @@ CreateBucketOutcome OssClient::CreateBucket(const std::string &bucket, StorageCl
 CreateBucketOutcome OssClient::CreateBucket(const CreateBucketRequest &request) const
 {
     return client_->CreateBucket(request);
-}
-
-ListObjectOutcome OssClient::ListObjects(const std::string &bucket) const
-{
-    return client_->ListObjects(ListObjectsRequest(bucket));
-}
-
-ListObjectOutcome OssClient::ListObjects(const std::string &bucket, const std::string &prefix) const
-{
-    ListObjectsRequest request(bucket);
-    request.setPrefix(prefix);
-    return client_->ListObjects(request);
-}
-
-ListObjectOutcome OssClient::ListObjects(const ListObjectsRequest &request) const
-{
-    return client_->ListObjects(request);
-}
-
-ListObjectVersionsOutcome OssClient::ListObjectVersions(const std::string &bucket) const
-{
-    return client_->ListObjectVersions(ListObjectVersionsRequest(bucket));
-}
-
-ListObjectVersionsOutcome OssClient::ListObjectVersions(const std::string &bucket, const std::string &prefix) const
-{
-    ListObjectVersionsRequest request(bucket);
-    request.setPrefix(prefix);
-    return client_->ListObjectVersions(request);
-}
-
-ListObjectVersionsOutcome OssClient::ListObjectVersions(const ListObjectVersionsRequest& request) const
-{
-    return client_->ListObjectVersions(request);
 }
 
 VoidOutcome OssClient::SetBucketAcl(const std::string &bucket, CannedAccessControlList acl) const
@@ -485,6 +452,72 @@ GetBucketVersioningOutcome OssClient::GetBucketVersioning(const GetBucketVersion
 GetBucketInventoryConfigurationOutcome OssClient::GetBucketInventoryConfiguration(const GetBucketInventoryConfigurationRequest& request) const
 {
     return client_->GetBucketInventoryConfiguration(request);
+}
+
+InitiateBucketWormOutcome OssClient::InitiateBucketWorm(const InitiateBucketWormRequest& request) const
+{
+    return client_->InitiateBucketWorm(request);
+}
+
+VoidOutcome OssClient::AbortBucketWorm(const AbortBucketWormRequest& request) const
+{
+    return client_->AbortBucketWorm(request);
+}
+
+VoidOutcome OssClient::CompleteBucketWorm(const CompleteBucketWormRequest& request) const
+{
+    return client_->CompleteBucketWorm(request);
+}
+
+VoidOutcome OssClient::ExtendBucketWormWorm(const ExtendBucketWormRequest& request) const
+{
+    return client_->ExtendBucketWormWorm(request);
+}
+
+GetBucketWormOutcome OssClient::GetBucketWorm(const GetBucketWormRequest& request) const
+{
+    return client_->GetBucketWorm(request);
+}
+
+#endif
+
+ListObjectOutcome OssClient::ListObjects(const std::string &bucket) const
+{
+    return client_->ListObjects(ListObjectsRequest(bucket));
+}
+
+ListObjectOutcome OssClient::ListObjects(const std::string &bucket, const std::string &prefix) const
+{
+    ListObjectsRequest request(bucket);
+    request.setPrefix(prefix);
+    return client_->ListObjects(request);
+}
+
+ListObjectOutcome OssClient::ListObjects(const ListObjectsRequest &request) const
+{
+    return client_->ListObjects(request);
+}
+
+ListObjectsV2Outcome OssClient::ListObjectsV2(const ListObjectsV2Request& request) const
+{
+    return client_->ListObjectsV2(request);
+}
+
+ListObjectVersionsOutcome OssClient::ListObjectVersions(const std::string &bucket) const
+{
+    return client_->ListObjectVersions(ListObjectVersionsRequest(bucket));
+}
+
+ListObjectVersionsOutcome OssClient::ListObjectVersions(const std::string &bucket, const std::string &prefix) const
+{
+    ListObjectVersionsRequest request(bucket);
+    request.setPrefix(prefix);
+    return client_->ListObjectVersions(request);
+}
+
+ListObjectVersionsOutcome OssClient::ListObjectVersions(const ListObjectVersionsRequest& request) const
+{
+    return client_->ListObjectVersions(request);
 }
 
 GetObjectOutcome OssClient::GetObject(const std::string &bucket, const std::string &key) const
@@ -875,10 +908,12 @@ UploadPartCopyOutcomeCallable OssClient::UploadPartCopyCallable(const UploadPart
 }
 
 /*Extended APIs*/
+#if !defined(OSS_DISABLE_BUCKET)
 bool OssClient::DoesBucketExist(const std::string &bucket) const
 {
     return client_->GetBucketAcl(GetBucketAclRequest(bucket)).isSuccess();
 }
+#endif
 
 bool OssClient::DoesObjectExist(const std::string &bucket, const std::string &key) const
 {
@@ -893,6 +928,7 @@ CopyObjectOutcome OssClient::ModifyObjectMeta(const std::string& bucket, const s
     return client_->CopyObject(copyRequest);
 }
 
+#if !defined(OSS_DISABLE_LIVECHANNEL)
 VoidOutcome OssClient::PutLiveChannelStatus(const PutLiveChannelStatusRequest &request) const
 {
     return client_->PutLiveChannelStatus(request);
@@ -942,6 +978,7 @@ StringOutcome OssClient::GenerateRTMPSignedUrl(const GenerateRTMPSignedUrlReques
 {
     return client_->GenerateRTMPSignedUrl(request);
 }
+#endif
 
 void OssClient::DisableRequest()
 {
@@ -953,6 +990,7 @@ void OssClient::EnableRequest()
     client_->EnableRequest();
 }
 
+#if !defined(OSS_DISABLE_RESUAMABLE)
 PutObjectOutcome OssClient::ResumableUploadObject(const UploadObjectRequest &request) const
 {
     return client_->ResumableUploadObject(request);
@@ -967,3 +1005,4 @@ GetObjectOutcome OssClient::ResumableDownloadObject(const DownloadObjectRequest 
 {
     return client_->ResumableDownloadObject(request);
 }
+#endif

@@ -405,8 +405,8 @@ void CurlHttpClient::cleanupGlobalState()
 CurlHttpClient::CurlHttpClient(const ClientConfiguration &configuration) :
     HttpClient(),
     curlContainer_(new CurlContainer(configuration.maxConnections, 
-                                                       configuration.connectTimeoutMs, 
-                                                       configuration.requestTimeoutMs)),
+                                                       configuration.requestTimeoutMs,
+                                                       configuration.connectTimeoutMs)),
     userAgent_(configuration.userAgent),
     proxyScheme_(configuration.proxyScheme),
     proxyHost_(configuration.proxyHost),
@@ -441,6 +441,8 @@ std::shared_ptr<HttpResponse> CurlHttpClient::makeRequest(const std::shared_ptr<
         str.append(": ").append(p.second);
         list = curl_slist_append(list, str.c_str());
     }
+    // Disable Expect: 100-continue
+    list = curl_slist_append(list, "Expect:");
 
     auto response = std::make_shared<HttpResponse>(request);
     
@@ -539,6 +541,11 @@ std::shared_ptr<HttpResponse> CurlHttpClient::makeRequest(const std::shared_ptr<
         curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, debugCallback);
     }
 
+    //Error Buffer
+    char errbuf[CURL_ERROR_SIZE];
+    curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errbuf);
+    errbuf[0] = 0;
+
     //progress Callback
     curl_easy_setopt(curl, CURLOPT_PROGRESSFUNCTION, progressCallback);
     curl_easy_setopt(curl, CURLOPT_PROGRESSDATA, &transferState);
@@ -585,7 +592,11 @@ std::shared_ptr<HttpResponse> CurlHttpClient::makeRequest(const std::shared_ptr<
         }
             break;
         default:
-            response->setStatusMsg(curl_easy_strerror(res));
+        {
+            std::string msg(curl_easy_strerror(res));
+            msg.append(".").append(errbuf);
+            response->setStatusMsg(msg);
+        }
             break;
         };
     }

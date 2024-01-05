@@ -1,12 +1,12 @@
 /*
  * Copyright 2009-2017 Alibaba Cloud All rights reserved.
- *
+ * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
+ * 
  *      http://www.apache.org/licenses/LICENSE-2.0
- *
+ * 
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -14,31 +14,30 @@
  * limitations under the License.
  */
 
+#include <alibabacloud/oss/model/InitiateBucketWormRequest.h>
+#include <sstream>
 
-#include <alibabacloud/oss/model/DeleteBucketTaggingRequest.h>
 using namespace AlibabaCloud::OSS;
 
-DeleteBucketTaggingRequest::DeleteBucketTaggingRequest(const std::string& bucket) :
-    OssBucketRequest(bucket)
+InitiateBucketWormRequest::InitiateBucketWormRequest(const std::string &bucket, uint32_t day) :
+    OssBucketRequest(bucket),
+    day_(day)
 {
 }
 
-void DeleteBucketTaggingRequest::setTagging(const Tagging& tagging)
+std::string InitiateBucketWormRequest::payload() const
 {
-    tagging_ = tagging;
+    std::stringstream ss;
+    ss << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" << std::endl;
+    ss << "<InitiateWormConfiguration>" << std::endl;
+    ss << "  <RetentionPeriodInDays>" << std::to_string(day_) << "</RetentionPeriodInDays>" << std::endl;
+    ss << "</InitiateWormConfiguration>" << std::endl;
+    return ss.str();
 }
 
-ParameterCollection DeleteBucketTaggingRequest::specialParameters() const
+ParameterCollection InitiateBucketWormRequest::specialParameters() const
 {
     ParameterCollection parameters;
-    std::string str;
-    for (const Tag& tag : tagging_.Tags())
-    {
-        if (!str.empty())
-            str += ",";
-        str += tag.Key();
-    }
-    parameters["tagging"] = str;
+    parameters["worm"] = "";
     return parameters;
 }
-

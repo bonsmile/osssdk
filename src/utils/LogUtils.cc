@@ -44,7 +44,7 @@ static std::string LogPrefix(LogLevel logLevel, const char* tag)
     auto ms = tp.time_since_epoch().count() % 1000;
     auto t = std::chrono::system_clock::to_time_t(tp);
     struct tm tm;
-#ifdef _WIN32
+#ifdef WIN32
     ::localtime_s(&tm, &t);
 #else
     ::localtime_r(&t, &tm);

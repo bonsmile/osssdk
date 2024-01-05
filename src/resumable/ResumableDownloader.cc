@@ -18,16 +18,21 @@
 #include <algorithm>
 #include <set>
 #include <alibabacloud/oss/Const.h>
-#include "utils/Utils.h"
-#include "utils/Crc64.h"
-#include "utils/LogUtils.h"
-#include "utils/FileSystemUtils.h"
-#include "external/json/json.h"
-#include "OssClientImpl.h"
+#include "../utils/Utils.h"
+#include "../utils/Crc64.h"
+#include "../utils/LogUtils.h"
+#include "../utils/FileSystemUtils.h"
+#include "../external/json/json.h"
+//#include "OssClientImpl.h"
 #include "ResumableDownloader.h"
-#include "model/ModelError.h"
+#include "../model/ModelError.h"
 
 using namespace AlibabaCloud::OSS;
+
+struct DownloaderTransferState {
+    int64_t transfered;
+    void *userData;
+};
 
 GetObjectOutcome ResumableDownloader::Download() 
 {
@@ -79,9 +84,12 @@ GetObjectOutcome ResumableDownloader::Download()
                 getObjectReq.setRange(start, end);
                 getObjectReq.setFlags(getObjectReq.Flags() | REQUEST_FLAG_CHECK_CRC64 | REQUEST_FLAG_SAVE_CLIENT_CRC64);
 
+                DownloaderTransferState transferState;
                 auto process = request_.TransferProgress();
                 if (process.Handler) {
-                    TransferProgress uploadPartProcess = { DownloadPartProcessCallback, (void *)this };
+                    transferState.transfered = 0;
+                    transferState.userData = (void *)this;
+                    TransferProgress uploadPartProcess = { DownloadPartProcessCallback, (void *)&transferState };
                     getObjectReq.setTransferProgress(uploadPartProcess);
                 }
                 if (request_.RequestPayer() == RequestPayer::Requester) {
@@ -205,7 +213,7 @@ GetObjectOutcome ResumableDownloader::Download()
             for (size_t i = 1; i < downloadedParts.size(); i++) {
                 localCRC64 = CRC64::CombineCRC(localCRC64, downloadedParts[i].crc64, downloadedParts[i].size);
             }
-            if (localCRC64 != outcomes[0].result().Metadata().CRC64()) {
+            if (localCRC64 != meta.CRC64()) {
                 return GetObjectOutcome(OssError("CrcCheckError", "ResumableDownload object CRC checksum fail."));
             }
         }
@@ -213,19 +221,19 @@ GetObjectOutcome ResumableDownloader::Download()
     }
     else {
         std::stringstream ss;
-        ss << "bytes " << request_.RangeStart() << "-";
+        ss << "bytes " << std::to_string(request_.RangeStart()) << "-";
         if (request_.RangeEnd() != -1) { 
-            ss << request_.RangeEnd() << "/" << objectSize_; 
+            ss << std::to_string(request_.RangeEnd()) << "/" << std::to_string(objectSize_);
         } 
         else {
-            ss << (objectSize_ - 1) << "/" << objectSize_;
+            ss << std::to_string(objectSize_ - 1) << "/" << std::to_string(objectSize_);
         }
         meta.HttpMetaData()["Content-Range"] = ss.str();
     }
 
     if (meta.HttpMetaData().find("x-oss-hash-crc64ecma-by-client") != meta.HttpMetaData().end()) {
         meta.HttpMetaData().erase("x-oss-hash-crc64ecma-by-client");
-    }
+   }
 
     if (!renameTempFile()) {
         std::stringstream ss;
@@ -468,10 +476,14 @@ void ResumableDownloader::initRecord()
 
 void ResumableDownloader::DownloadPartProcessCallback(size_t increment, int64_t transfered, int64_t total, void *userData) 
 {
-    UNUSED_PARAM(transfered);
     UNUSED_PARAM(total);
+    auto transferState = (DownloaderTransferState *)userData;
+    auto downloader = (ResumableDownloader*)transferState->userData;
+    auto inc = transfered - transferState->transfered;
+    transferState->transfered = std::max(transfered, transferState->transfered);
+    inc = std::max(inc, static_cast<int64_t>(0));
+    increment = static_cast<size_t>(inc);
 
-    auto downloader = (ResumableDownloader*)userData;
     std::lock_guard<std::mutex> lck(downloader->lock_);
     downloader->consumedSize_ += increment;
 

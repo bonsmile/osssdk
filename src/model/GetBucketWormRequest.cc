@@ -14,26 +14,18 @@
  * limitations under the License.
  */
 
-#pragma once
+#include <alibabacloud/oss/model/GetBucketWormRequest.h>
 
-#include <alibabacloud/oss/auth/CredentialsProvider.h>
+using namespace AlibabaCloud::OSS;
 
-namespace AlibabaCloud
+GetBucketWormRequest::GetBucketWormRequest(const std::string &bucket) :
+    OssBucketRequest(bucket)
 {
-namespace OSS
-{
-
-    class ALIBABACLOUD_OSS_EXPORT SimpleCredentialsProvider : public CredentialsProvider
-    {
-    public:
-        SimpleCredentialsProvider(const Credentials &credentials);
-        SimpleCredentialsProvider(const std::string &accessKeyId,
-            const std::string &accessKeySecret, const std::string &securityToken = "");
-        ~SimpleCredentialsProvider();
-
-        virtual Credentials getCredentials() override;
-    private:
-        Credentials credentials_;
-    };
 }
+
+ParameterCollection GetBucketWormRequest::specialParameters() const
+{
+    ParameterCollection parameters;
+    parameters["worm"] = "";
+    return parameters;
 }

@@ -29,10 +29,11 @@
 #include "OssClientImpl.h"
 #include "utils/LogUtils.h"
 #include "utils/FileSystemUtils.h"
-#include "ResumableUploader.h"
-#include "ResumableDownloader.h"
-#include "ResumableCopier.h"
-
+#if !defined(OSS_DISABLE_RESUAMABLE)
+#include "resumable/ResumableUploader.h"
+#include "resumable/ResumableDownloader.h"
+#include "resumable/ResumableCopier.h"
+#endif
 using namespace AlibabaCloud::OSS;
 using namespace tinyxml2;
 
@@ -47,7 +48,8 @@ OssClientImpl::OssClientImpl(const std::string &endpoint, const std::shared_ptr<
     endpoint_(endpoint),
     credentialsProvider_(credentialsProvider),
     signer_(std::make_shared<HmacSha1Signer>()),
-    executor_(configuration.executor ? configuration.executor :std::make_shared<ThreadExecutor>())
+    executor_(configuration.executor ? configuration.executor :std::make_shared<ThreadExecutor>()),
+    isValidEndpoint_(IsValidEndpoint(endpoint))
 {
 }
 
@@ -210,8 +212,8 @@ void OssClientImpl::addUrl(const std::shared_ptr<HttpRequest> &httpRequest, cons
 {
     const OssRequest& ossRequest = static_cast<const OssRequest&>(request);
 
-    auto host = CombineHostString(endpoint, ossRequest.bucket(), configuration().isCname);
-    auto path = CombinePathString(endpoint, ossRequest.bucket(), ossRequest.key());
+    auto host = CombineHostString(endpoint, ossRequest.bucket(), configuration().isCname, configuration().isPathStyle);
+    auto path = CombinePathString(endpoint, ossRequest.bucket(), ossRequest.key(), configuration().isPathStyle);
 
     Url url(host);
     url.setPath(path);
@@ -318,6 +320,10 @@ OssOutcome OssClientImpl::MakeRequest(const OssRequest &request, Http::Method me
         return OssOutcome(OssError("ValidateError", request.validateMessage(ret)));
     }
 
+    if (!isValidEndpoint_) {
+        return OssOutcome(OssError("ValidateError", "The endpoint is invalid."));
+    }
+
     auto outcome = BASE::AttemptRequest(endpoint_, request, method);
     if (outcome.isSuccess()) {
         return OssOutcome(buildResult(request, outcome.result()));
@@ -325,6 +331,8 @@ OssOutcome OssClientImpl::MakeRequest(const OssRequest &request, Http::Method me
         return OssOutcome(buildError(outcome.error()));
     }
 }
+
+#if !defined(OSS_DISABLE_BUCKET)
 
 ListBucketsOutcome OssClientImpl::ListBuckets(const ListBucketsRequest &request) const
 {
@@ -659,34 +667,6 @@ VoidOutcome OssClientImpl::DeleteBucketInventoryConfiguration(const DeleteBucket
     }
 }
 
-ListObjectOutcome OssClientImpl::ListObjects(const ListObjectsRequest &request) const
-{
-    auto outcome = MakeRequest(request, Http::Method::Get);
-    if (outcome.isSuccess()) {
-        ListObjectsResult result(outcome.result().payload());
-        result.requestId_ = outcome.result().RequestId();
-        return result.ParseDone() ? ListObjectOutcome(std::move(result)) :
-            ListObjectOutcome(OssError("ParseXMLError", "Parsing ListObject result fail."));
-    }
-    else {
-        return ListObjectOutcome(outcome.error());
-    }
-}
-
-ListObjectVersionsOutcome OssClientImpl::ListObjectVersions(const ListObjectVersionsRequest &request) const
-{
-    auto outcome = MakeRequest(request, Http::Method::Get);
-    if (outcome.isSuccess()) {
-        ListObjectVersionsResult result(outcome.result().payload());
-        result.requestId_ = outcome.result().RequestId();
-        return result.ParseDone() ? ListObjectVersionsOutcome(std::move(result)) :
-            ListObjectVersionsOutcome(OssError("ParseXMLError", "Parsing ListObjectVersions result fail."));
-    }
-    else {
-        return ListObjectVersionsOutcome(outcome.error());
-    }
-}
-
 GetBucketAclOutcome OssClientImpl::GetBucketAcl(const GetBucketAclRequest &request) const
 {
     auto outcome = MakeRequest(request, Http::Method::Get);
@@ -952,6 +932,113 @@ ListBucketInventoryConfigurationsOutcome OssClientImpl::ListBucketInventoryConfi
     }
 }
 
+InitiateBucketWormOutcome OssClientImpl::InitiateBucketWorm(const InitiateBucketWormRequest& request) const
+{
+    auto outcome = MakeRequest(request, Http::Method::Post);
+    if (outcome.isSuccess()) {
+        return InitiateBucketWormOutcome(InitiateBucketWormResult(outcome.result().headerCollection()));
+    }
+    else {
+        return InitiateBucketWormOutcome(outcome.error());
+    }
+}
+
+VoidOutcome OssClientImpl::AbortBucketWorm(const AbortBucketWormRequest& request) const
+{
+    auto outcome = MakeRequest(request, Http::Method::Delete);
+    if (outcome.isSuccess()) {
+        VoidResult result;
+        result.requestId_ = outcome.result().RequestId();
+        return VoidOutcome(result);
+    }
+    else {
+        return VoidOutcome(outcome.error());
+    }
+}
+
+VoidOutcome OssClientImpl::CompleteBucketWorm(const CompleteBucketWormRequest& request) const
+{
+    auto outcome = MakeRequest(request, Http::Method::Post);
+    if (outcome.isSuccess()) {
+        VoidResult result;
+        result.requestId_ = outcome.result().RequestId();
+        return VoidOutcome(result);
+    }
+    else {
+        return VoidOutcome(outcome.error());
+    }
+}
+
+VoidOutcome OssClientImpl::ExtendBucketWormWorm(const ExtendBucketWormRequest& request) const
+{
+    auto outcome = MakeRequest(request, Http::Method::Post);
+    if (outcome.isSuccess()) {
+        VoidResult result;
+        result.requestId_ = outcome.result().RequestId();
+        return VoidOutcome(result);
+    }
+    else {
+        return VoidOutcome(outcome.error());
+    }
+}
+
+GetBucketWormOutcome OssClientImpl::GetBucketWorm(const GetBucketWormRequest& request) const
+{
+    auto outcome = MakeRequest(request, Http::Method::Get);
+    if (outcome.isSuccess()) {
+        GetBucketWormResult result(outcome.result().payload());
+        result.requestId_ = outcome.result().RequestId();
+        return result.ParseDone() ? GetBucketWormOutcome(std::move(result)) :
+            GetBucketWormOutcome(OssError("ParseXMLError", "Parsing GetBucketWorm result fail."));
+    }
+    else {
+        return GetBucketWormOutcome(outcome.error());
+    }
+}
+#endif
+
+ListObjectOutcome OssClientImpl::ListObjects(const ListObjectsRequest &request) const
+{
+    auto outcome = MakeRequest(request, Http::Method::Get);
+    if (outcome.isSuccess()) {
+        ListObjectsResult result(outcome.result().payload());
+        result.requestId_ = outcome.result().RequestId();
+        return result.ParseDone() ? ListObjectOutcome(std::move(result)) :
+            ListObjectOutcome(OssError("ParseXMLError", "Parsing ListObject result fail."));
+    }
+    else {
+        return ListObjectOutcome(outcome.error());
+    }
+}
+
+ListObjectsV2Outcome OssClientImpl::ListObjectsV2(const ListObjectsV2Request &request) const
+{
+    auto outcome = MakeRequest(request, Http::Method::Get);
+    if (outcome.isSuccess()) {
+        ListObjectsV2Result result(outcome.result().payload());
+        result.requestId_ = outcome.result().RequestId();
+        return result.ParseDone() ? ListObjectsV2Outcome(std::move(result)) :
+            ListObjectsV2Outcome(OssError("ParseXMLError", "Parsing ListObjectV2 result fail."));
+    }
+    else {
+        return ListObjectsV2Outcome(outcome.error());
+    }
+}
+
+ListObjectVersionsOutcome OssClientImpl::ListObjectVersions(const ListObjectVersionsRequest &request) const
+{
+    auto outcome = MakeRequest(request, Http::Method::Get);
+    if (outcome.isSuccess()) {
+        ListObjectVersionsResult result(outcome.result().payload());
+        result.requestId_ = outcome.result().RequestId();
+        return result.ParseDone() ? ListObjectVersionsOutcome(std::move(result)) :
+            ListObjectVersionsOutcome(OssError("ParseXMLError", "Parsing ListObjectVersions result fail."));
+    }
+    else {
+        return ListObjectVersionsOutcome(outcome.error());
+    }
+}
+
 #undef GetObject
 GetObjectOutcome OssClientImpl::GetObject(const GetObjectRequest &request) const
 {
@@ -1201,7 +1288,7 @@ GetObjectTaggingOutcome OssClientImpl::GetObjectTagging(const GetObjectTaggingRe
 StringOutcome OssClientImpl::GeneratePresignedUrl(const GeneratePresignedUrlRequest &request) const
 {
     if (!IsValidBucketName(request.bucket_) ||
-        !IsValidObjectKey(request.key_)) {
+        !IsValidObjectKey(request.key_, configuration().isVerifyObjectStrict)) {
         return StringOutcome(OssError("ValidateError", "The Bucket or Key is invalid."));
     }
 
@@ -1226,9 +1313,16 @@ StringOutcome OssClientImpl::GeneratePresignedUrl(const GeneratePresignedUrlRequ
     parameters["OSSAccessKeyId"] = credentials.AccessKeyId();
     parameters["Signature"] = signature;
 
+    //host
     std::stringstream ss;
-    ss << CombineHostString(endpoint_, request.bucket_, configuration().isCname);
-    ss << CombinePathString(endpoint_, request.bucket_, request.key_);
+    ss << CombineHostString(endpoint_, request.bucket_, configuration().isCname, configuration().isPathStyle);
+    //path
+    auto path = CombinePathString(endpoint_, request.bucket_, request.key_, configuration().isPathStyle);
+    if (request.unencodedSlash_) {
+        StringReplace(path, "%2F", "/");
+    }
+    ss << path;
+    //query
     ss << "?";
     ss << CombineQueryString(parameters);
 
@@ -1360,6 +1454,7 @@ ListPartsOutcome OssClientImpl::ListParts(const ListPartsRequest &request) const
     }
 }
 
+#if !defined(OSS_DISABLE_RESUAMABLE)
 /*Resumable Operation*/
 PutObjectOutcome OssClientImpl::ResumableUploadObject(const UploadObjectRequest& request) const 
 {
@@ -1491,7 +1586,9 @@ GetObjectOutcome OssClientImpl::ResumableDownloadObject(const DownloadObjectRequ
     ResumableDownloader downloader(request, this, objectSize);
     return downloader.Download();
 }
+#endif
 
+#if !defined(OSS_DISABLE_LIVECHANNEL)
 /*Live Channel*/
 VoidOutcome OssClientImpl::PutLiveChannelStatus(const PutLiveChannelStatusRequest& request) const
 {
@@ -1652,15 +1749,15 @@ StringOutcome OssClientImpl::GenerateRTMPSignedUrl(const GenerateRTMPSignedUrlRe
     parameters["Signature"] = signature;
 
     ss.str("");
-    ss << CombineRTMPString(endpoint_, request.bucket_, configuration().isCname);
+    ss << CombineRTMPString(endpoint_, request.bucket_, configuration().isCname, configuration().isPathStyle);
     ss << "/live";
-    ss << CombinePathString(endpoint_, request.bucket_, request.key_);
+    ss << CombinePathString(endpoint_, request.bucket_, request.key_, configuration().isPathStyle);
     ss << "?";
     ss << CombineQueryString(parameters);
 
     return StringOutcome(ss.str());
 }
-
+#endif
 
 /*Requests control*/
 void OssClientImpl::DisableRequest()
